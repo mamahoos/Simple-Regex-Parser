@@ -18,6 +18,7 @@ class RegexParser:
         - Dot (.) for wildcard
         - Shorthand character classes (\d, \w, \s)
     """
+    __slots__ = ['pattern', 'pos', 'anchor_start', 'anchor_end', '_quantifiers']
 
     def __init__(self, pattern: str):
         """
@@ -28,9 +29,9 @@ class RegexParser:
         """
         self.pattern = pattern
         self.pos     = cast(int, 0)
-        self.anchor_start : bool = False
-        self.anchor_end   : bool = False
-        self.__quantifiers: str  = '*+?{'
+        self.anchor_start: bool = False
+        self.anchor_end  : bool = False
+        self._quantifiers: str  = '*+?{'
 
     def parse(self) -> NFA:
         """
@@ -94,7 +95,7 @@ class RegexParser:
         """
         nfa  = self._base()
         peek = self._peek()
-        if peek and peek in self.__quantifiers:
+        if peek and peek in self._quantifiers:
             op = self._consume()
             match op:
                 case '*':
@@ -108,7 +109,7 @@ class RegexParser:
                 case _:
                     raise NotImplementedError(f"Unexpected operator: {op}")
             # Check for multiple quantifiers in a row (not allowed)
-            if (peek := self._peek()) and peek in self.__quantifiers:
+            if (peek := self._peek()) and peek in self._quantifiers:
                 raise ValueError(f"Multiple consecutive quantifiers are not allowed at position {self.pos}")
         return nfa
 
