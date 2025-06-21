@@ -153,30 +153,55 @@ class NFARunner:
         Returns:
             bool: True if the NFA matches the string, False otherwise.
         """
-        if self.anchor_start:
-            positions = [0]
-        else:
-            positions = range(len(s) + 1)
-            
-        for pos in positions:
-            current_states = self._epsilon_closure({self.nfa.start})
-            for char in s[pos:]:
-                next_states = set()
-                for state in current_states:
-                    # Dot: any character
-                    dot = TransitionLabel('.', is_wildcard=True)
-                    for target in state.transitions.get(dot, []):
-                        next_states.update(self._epsilon_closure({target}))
-                    # Literal/escaped
-                    literal = TransitionLabel(char)
-                    for target in state.transitions.get(literal, []):
-                        next_states.update(self._epsilon_closure({target}))
-                current_states = next_states
-                
-            if self.anchor_end:
-                if self.nfa.accept in current_states and pos + len(s[pos:]) == len(s):
-                    return True
-            else:
-                if self.nfa.accept in current_states:
-                    return True
+        # Determine starting positions based on anchor
+        start_positions = [0] if self.anchor_start else range(len(s) + 1)
+
+        for start_idx in start_positions:
+            if self._match_from_position(s, start_idx):
+                return True
         return False
+
+    def _match_from_position(self, s: str, start_idx: int) -> bool:
+        """
+        Attempts to match the NFA from a specific position in the input string.
+
+        Args:
+            s (str): The input string.
+            start_idx (int): The position to start matching from.
+
+        Returns:
+            bool: True if a match is found, False otherwise.
+        """
+        current_states = self._epsilon_closure({self.nfa.start})
+
+        for char in s[start_idx:]:
+            current_states = self._get_next_states(current_states, char)
+            if not current_states:
+                break
+
+        if self.anchor_end:
+            return self.nfa.accept in current_states and (start_idx + len(s[start_idx:]) == len(s))
+        return self.nfa.accept in current_states
+
+    def _get_next_states(self, states: Set[State], char: str) -> Set[State]:
+        """
+        Computes the set of next states for a given input character.
+
+        Args:
+            states (Set[State]): The current set of states.
+            char (str): The current input character.
+
+        Returns:
+            Set[State]: The set of next states after consuming the character.
+        """
+        next_states = set()
+        for state in states:
+            # Handle wildcard (dot)
+            dot_label = TransitionLabel('.', is_wildcard=True)
+            for target in state.transitions.get(dot_label, []):
+                next_states.update(self._epsilon_closure({target}))
+            # Handle literal/escaped character
+            literal_label = TransitionLabel(char)
+            for target in state.transitions.get(literal_label, []):
+                next_states.update(self._epsilon_closure({target}))
+        return next_states
