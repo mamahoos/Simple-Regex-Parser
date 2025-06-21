@@ -1,8 +1,4 @@
-from typing import Optional, List, Set, Dict, cast, Tuple
-
-
-# === NFA Execution ===
-
+from parser import Regex
 
 
 
