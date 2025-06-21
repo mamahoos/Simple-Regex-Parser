@@ -81,6 +81,7 @@ if match(r"a(b|c)*d", "abcbcd"):
 
 ```
 nfa_regex/
+├── __main__.py        # Entry point for command-line usage: allows running regex matching from the terminal
 ├── __init__.py        # Public API: compile, match, search
 ├── nfa.py             # Core NFA data structures and transitions
 ├── regex_parser.py    # Regex pattern parser and NFA builder
@@ -107,9 +108,18 @@ nfa_regex/
     print(search("a.c", "xxabcxx")) # Finds 'abc' in the string
     ```
 
-3. **Run tests or examples as needed.**
+3. **Command-line usage:**
 
----
+    You can also run regex matching directly from the terminal:
+    ```sh
+    python -m nfa_regex "<pattern>" "<string>"
+    ```
+    Example:
+    ```sh
+    python -m nfa_regex "a(b|c)*d" "abcbcd"
+    ```
+
+    If a match is found, the matched result will be printed; otherwise, you will see `No match
 
 ## Supported Features
 

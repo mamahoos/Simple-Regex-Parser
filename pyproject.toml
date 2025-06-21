@@ -1,7 +1,7 @@
 [project]
 name = "simpleregexparser"
 version = "0.1.0"
-description = ""
+description = "A minimal Python library for parsing and simulating regular expressions using nondeterministic finite automata (NFA). "
 authors = [
     {name = "mamahoos",email = "m4m4hoos@gmail.com"}
 ]
