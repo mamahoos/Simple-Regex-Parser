@@ -3,6 +3,15 @@ from typing import Set, List, Tuple
 
 
 class MatchResult:
+    """Represents the result of a match operation, containing the matched string and its span.
+    
+    ### Attributes:
+        fullmatch (str): The entire matched string.
+        start (int): The starting index of the match.
+        end (int): The ending index of the match.
+        groups (List[str]): List of captured groups in the match.
+        group_spans (List[Tuple[int, int]]): List of spans for each captured group.
+    """
     def __init__(self, fullmatch: str,
                  start: int, end: int, 
                  groups: List[str] = [], group_spans: List[Tuple[int, int]] = []) -> None:
