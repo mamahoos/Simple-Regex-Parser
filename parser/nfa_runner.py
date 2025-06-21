@@ -175,14 +175,14 @@ class NFARunner:
                 next_states.update(self._epsilon_closure({target}))
         return next_states
 
-    def _match_from_position(self, s: str, start_idx: int) -> Tuple[bool, int]:
+    def _match_from_position(self, string: str, start_idx: int, /) -> Tuple[bool, int]:
         """
         Returns (matched, end_index) if match found, otherwise (False, -1)
         """
         current_states = self._epsilon_closure({self.nfa.start})
         idx = start_idx
         last_accept_idx = -1
-        for i, char in enumerate(s[start_idx:], start=start_idx):
+        for i, char in enumerate(string[start_idx:], start=start_idx):
             current_states = self._get_next_states(current_states, char)
             if not current_states:
                 break
@@ -191,7 +191,7 @@ class NFARunner:
             idx = i + 1
         # Anchor end: only accept if match ends at end of string
         if self.anchor_end:
-            if self.nfa.accept in current_states and idx == len(s):
+            if self.nfa.accept in current_states and idx == len(string):
                 return True, idx
             return False, -1
         # Accept the last position where accept state was reached
@@ -199,43 +199,43 @@ class NFARunner:
             return True, last_accept_idx
         return False, -1
 
-    def run(self, s: str) -> bool:
+    def run(self, string: str, /) -> bool:
         """
         Returns True if any match is found (like search).
         """
-        return bool(self.search(s))
+        return bool(self.match(string))
 
-    def match(self, s: str) -> 'MatchResult | None':
+    def match(self, string: str, /) -> 'MatchResult | None':
         """
         Tries to match the pattern at the start of the string.
         """
-        matched, end_idx = self._match_from_position(s, 0)
+        matched, end_idx = self._match_from_position(string, 0)
         if matched:
-            return MatchResult(s[:end_idx], 0, end_idx)
+            return MatchResult(string[:end_idx], 0, end_idx)
         return None
 
-    def search(self, s: str) -> 'MatchResult | None':
+    def search(self, string: str, /) -> 'MatchResult | None':
         """
         Scans through string and returns first match anywhere.
         """
-        start_positions = [0] if self.anchor_start else range(len(s) + 1)
+        start_positions = [0] if self.anchor_start else range(len(string) + 1)
         for start_idx in start_positions:
-            matched, end_idx = self._match_from_position(s, start_idx)
+            matched, end_idx = self._match_from_position(string, start_idx)
             if matched:
-                return MatchResult(s[start_idx:end_idx], start_idx, end_idx)
+                return MatchResult(string[start_idx:end_idx], start_idx, end_idx)
         return None
 
-    def findall(self, s: str) -> List[MatchResult]:
+    def findall(self, string: str, /) -> List[MatchResult]:
         """
         Returns all non-overlapping matches in the string.
         """
         matches = []
         i = 0
-        length = len(s)
+        length = len(string)
         while i <= length:
-            matched, end_idx = self._match_from_position(s, i)
+            matched, end_idx = self._match_from_position(string, i)
             if matched and end_idx > i:
-                matches.append(MatchResult(s[i:end_idx], i, end_idx))
+                matches.append(MatchResult(string[i:end_idx], i, end_idx))
                 i = end_idx if end_idx > i else i + 1
             else:
                 i += 1
