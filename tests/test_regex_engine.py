@@ -2,6 +2,8 @@ import unittest
 from nfa_regex import compile as compile_pattern
 
 class TestRegexEngine(unittest.TestCase):
+    """Unit tests for the NFA regex engine."""
+    
     def test_simple_literal(self):
         runner = compile_pattern("abc")
         self.assertTrue(runner.run("abc"))
