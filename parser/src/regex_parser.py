@@ -1,6 +1,7 @@
+from typing import cast, Tuple, Optional, Set
 from nfa import TransitionLabel, State, NFA
-from typing import cast, Tuple, Optional
 from copy import deepcopy
+import string
 
 
 class RegexParser:
@@ -131,10 +132,20 @@ class RegexParser:
             case '[':
                 self._consume('[')
                 nfa = self._character_class()
-                self._consume(']')
                 return nfa
             case _:
                 return self._literal(self._consume())
+            
+    def _builtin_charset(self, key: str) -> set[str]:
+        match key:
+            case 'd':
+                return set('0123456789')
+            case 'w':
+                return set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_')
+            case 's':
+                return set(' \t\r\n\f\v')
+            case _:
+                return set(key)  # fallback to literal character
 
     def _digit(self) -> NFA:
         """
@@ -145,7 +156,7 @@ class RegexParser:
         """
         start = State()
         end   = State()
-        for c in '0123456789':
+        for c in self._builtin_charset('d'):
             symbol = TransitionLabel(c)
             start.add_transition(symbol, end)
         return NFA(start, end)
@@ -159,7 +170,7 @@ class RegexParser:
         """
         start = State()
         end   = State()
-        for c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_':
+        for c in self._builtin_charset('w'):
             symbol = TransitionLabel(c)
             start.add_transition(symbol, end)
         return NFA(start, end)
@@ -173,7 +184,7 @@ class RegexParser:
         """
         start = State()
         end   = State()
-        for c in ' \t\r\n\f\v':
+        for c in self._builtin_charset('s'):
             symbol = TransitionLabel(c)
             start.add_transition(symbol, end)
         return NFA(start, end)
@@ -362,17 +373,45 @@ class RegexParser:
     
     def _character_class(self) -> NFA:
         """
-        Constructs an NFA that matches character class.
+        Parses and constructs an NFA that matches a character class.
+        Supports positive and negative character classes, character ranges (a-z), and escaped characters.
 
         ### Returns:
-            NFA: The NFA for characters.
+            NFA: The NFA for the character class.
         """
-        start = State()
-        end   = State()
+        start  = State()
+        end    = State()
+        chars  = cast(Set[str], set())
+        negate = False
+
+        if self._peek() == '^':
+            negate = True
+            self._consume('^')
+
         while (peek := self._peek()) and peek != ']':
-            next_char = self._consume()
-            symbol    = TransitionLabel(next_char, is_wildcard=False)
+            if peek == '\\':
+                self._consume('\\')
+                escaped = self._consume()
+                chars.update(self._builtin_charset(escaped))
+            elif peek and self.pos + 2 < len(self.pattern) and self.pattern[self.pos + 1] == '-':
+                # Handle character range like a-z
+                start_ch = self._consume()
+                self._consume('-')
+                end_ch   = self._consume()
+                chars.update(chr(c) for c in range(ord(start_ch), ord(end_ch) + 1))
+            else:
+                chars.add(self._consume())
+
+        self._consume(']')
+
+        if negate:
+            universe = set(string.printable)  # All printable characters
+            chars    = universe - chars
+
+        for char in chars:
+            symbol = TransitionLabel(char, is_wildcard=False)
             start.add_transition(symbol, end)
+
         return NFA(start, end)
 
     def _peek(self) -> Optional[str]:

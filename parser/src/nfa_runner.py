@@ -1,6 +1,36 @@
 from nfa import TransitionLabel, State, NFA
-from typing import Set
+from typing import Set, List, Tuple
 
+
+class MatchResult:
+    def __init__(self, fullmatch: str,
+                 start: int, end: int, 
+                 groups: List[str] = [], group_spans: List[Tuple[int, int]] = []) -> None:
+        self.__fullmatch = fullmatch
+        self.__start     = start
+        self.__end       = end
+        self.__groups    = groups
+        self.__spans     = group_spans
+
+    def group(self, n=0) -> str:
+        return self.__fullmatch if n == 0 else self.__groups[n - 1]
+    
+    @property
+    def groups(self) -> Tuple[str, ...]:
+        return tuple(self.__groups)
+    
+    def start(self, n=0) -> int:
+        return self.__start if n == 0 else self.__spans[n - 1][0]
+        
+    def end(self, n=0) -> int:
+        return self.__end if n == 0 else self.__spans[n - 1][1]
+    
+    def spans(self, n=0) -> Tuple[int, int]:
+        return (self.start(n), self.end(n))
+
+    def __repr__(self) -> str:
+        return f"<Match(span={self.spans()}, match={self.__fullmatch!r})>"
+    
 
 class NFARunner:
     """
