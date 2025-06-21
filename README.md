@@ -77,23 +77,15 @@ if match(r"a(b|c)*d", "abcbcd"):
 
 ---
 
-SimpleRegexParser is ideal for students, educators, and anyone interested in learning how regular expressions work under the hood.
-
 ## Project Structure
 
 ```
-parser/
-├── nfa.py           # Core NFA construction and simulation logic
-├── regex_parser.py  # Regex pattern parsing and AST generation
-├── tokens.py        # Token definitions for regex parsing
-├── utils.py         # Utility functions
-└── __init__.py      # Package initialization
+nfa_regex/
+├── __init__.py        # Public API: compile, match, search
+├── nfa.py             # Core NFA data structures and transitions
+├── regex_parser.py    # Regex pattern parser and NFA builder
+├── nfa_runner.py      # NFA simulation and matching engine
 ```
-
-- **nfa.py:** Implements the NFA data structures and algorithms for simulating regex matches.
-- **regex_parser.py:** Parses regex patterns into an abstract syntax tree (AST) and translates them into NFA.
-- **tokens.py:** Defines token types and helpers for the regex parser.
-- **utils.py:** Contains helper functions used throughout the project.
 
 ---
 
@@ -105,46 +97,38 @@ parser/
     cd SimpleRegexParser
     ```
 
-2. **Run a sample:**
-    ```sh
-    python -m parser.regex_parser "a(b|c)*d" "abcbcd"
+2. **Import and use in your Python code:**
+    ```python
+    from nfa_regex import compile, match, search
+
+    runner = compile("abc")
+    print(runner.match("abc"))      # Full match
+    print(runner.match("ab"))       # None (no match)
+    print(search("a.c", "xxabcxx")) # Finds 'abc' in the string
     ```
-    Adjust the command as needed for your environment and test cases.
 
-3. **Integrate in your code:**
-    Import the relevant modules from `parser/` and use the provided classes and functions to parse and match regex patterns.
+3. **Run tests or examples as needed.**
 
 ---
 
-## How It Works
+## Supported Features
 
-- The regex pattern is parsed into tokens and then into an AST.
-- The AST is converted into an NFA.
-- The NFA is simulated to match input strings.
-
-This approach helps visualize and understand how regular expressions are processed internally.
+- Standard regex syntax: literals, character classes, quantifiers (`*`, `+`, `?`, `{n,m}`), alternation (`|`), grouping (`(...)`), anchors (`^`, `$`), dot (`.`), and shorthand classes (`\d`, `\w`, `\s`).
+- Pure Python implementation using NFA simulation.
+- No external dependencies.
 
 ---
 
-## TODO
+## Limitations
 
-- [ ] Add lookahead and lookbehind support
-- [ ] Implement NFA optimizer for performance improvements
-- [ ] Add regex flags (e.g., case-insensitive, multiline)
-- [ ] Expand regex feature set (e.g., Unicode support)
-- [ ] Improve error handling and reporting
-- [ ] Add more comprehensive tests and examples
+- No support for lookahead/lookbehind, named groups, or regex flags.
+- Only ASCII character classes are supported.
+- No DFA optimization; performance is suitable for educational and moderate use.
 
 ---
 
 ## License
 
-It's a simple project for educational purposes.
-
----
-
-## Acknowledgements
-
-Inspired by academic materials from the Theory of Languages and Automata course.
+This project is licensed under the [MIT License](LICENSE).
 
 
