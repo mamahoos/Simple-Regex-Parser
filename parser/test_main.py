@@ -1,5 +1,5 @@
 import unittest
-from main import RegexParser, NFARunner, compile_pattern
+from main import RegexParser, NFARunner, compile as compile_pattern
 
 class TestRegexEngine(unittest.TestCase):
     def test_simple_literal(self):

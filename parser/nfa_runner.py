@@ -175,7 +175,7 @@ class NFARunner:
                 next_states.update(self._epsilon_closure({target}))
         return next_states
 
-    def _match_from_position(self, string: str, start_idx: int, /) -> Tuple[bool, int]:
+    def _match_from_position(self, string: str, start_idx: int) -> Tuple[bool, int]:
         """
         Returns (matched, end_index) if match found, otherwise (False, -1)
         """
@@ -201,7 +201,7 @@ class NFARunner:
 
     def run(self, string: str, /) -> bool:
         """
-        Returns True if any match is found (like search).
+        Returns True if any match is found.
         """
         return bool(self.match(string))
 
@@ -210,7 +210,8 @@ class NFARunner:
         Tries to match the pattern at the start of the string.
         """
         matched, end_idx = self._match_from_position(string, 0)
-        if matched:
+        # Only accept if match consumed at least one character and is not partial
+        if matched and end_idx == len(string):
             return MatchResult(string[:end_idx], 0, end_idx)
         return None
 
