@@ -27,9 +27,10 @@ class RegexParser:
             pattern (str): The regular expression pattern to parse.
         """
         self.pattern = pattern
-        self.pos     = cast(int, 0)  # Current position in the pattern
-        self.anchor_start: bool = False
-        self.anchor_end  : bool = False
+        self.pos     = cast(int, 0)
+        self.anchor_start : bool = False
+        self.anchor_end   : bool = False
+        self.__quantifiers: str  = '*+?{'
 
     def parse(self) -> NFA:
         """
@@ -53,7 +54,7 @@ class RegexParser:
     def _expression(self) -> NFA:
         """
         Parse an expression, handling alternation (|).
-
+        
         Returns:
             NFA: The NFA for the parsed expression.
         """
@@ -67,27 +68,33 @@ class RegexParser:
     def _term(self) -> NFA:
         """
         Parse a term, handling concatenation.
-
+        
         Returns:
             NFA: The NFA for the parsed term.
         """
-        nfa = self._factor()
-        while (peek := self._peek()) and peek not in ')|':
-            if peek == '$':
+        factors = []
+        while True:
+            peek = self._peek()
+            if peek is None or peek in '|)$':
                 break
-            next_nfa = self._factor()
-            nfa      = self._concatenate(nfa, next_nfa)
+            factors.append(self._factor())
+        if not factors:
+            # Empty term (e.g., for patterns like a|)
+            return self._literal('')  # or handle as epsilon
+        nfa = factors[0]
+        for next_nfa in factors[1:]:
+            nfa = self._concatenate(nfa, next_nfa)
         return nfa
 
     def _factor(self) -> NFA:
         """
         Parse a factor, handling quantifiers (*, +, ?, {n}, etc).
-
         Returns:
             NFA: The NFA for the parsed factor.
         """
-        nfa = self._base()
-        while (peek := self._peek()) and peek in '*+?{':
+        nfa  = self._base()
+        peek = self._peek()
+        if peek and peek in self.__quantifiers:
             op = self._consume()
             match op:
                 case '*':
@@ -99,8 +106,10 @@ class RegexParser:
                 case '{':
                     nfa = self._repeat(nfa)
                 case _:
-                    raise ValueError(f"Unexpected operator: {op}")
-
+                    raise NotImplementedError(f"Unexpected operator: {op}")
+            # Check for multiple quantifiers in a row (not allowed)
+            if (peek := self._peek()) and peek in self.__quantifiers:
+                raise ValueError(f"Multiple consecutive quantifiers are not allowed at position {self.pos}")
         return nfa
 
     def _base(self) -> NFA:
@@ -134,7 +143,8 @@ class RegexParser:
                         return self._literal(escaped)
             case '.':
                 self._consume('.')
-                return self._dot()
+                nfa = self._dot()
+                return nfa
             case '[':
                 self._consume('[')
                 nfa = self._character_class()
@@ -172,8 +182,8 @@ class RegexParser:
         start = State()
         end   = State()
         for c in self._builtin_charset('d'):
-            symbol = TransitionLabel(c)
-            start.add_transition(symbol, end)
+            label = TransitionLabel(c)
+            start.add_transition(label, end)
         return NFA(start, end)
 
     def _word(self) -> NFA:
@@ -186,8 +196,8 @@ class RegexParser:
         start = State()
         end   = State()
         for c in self._builtin_charset('w'):
-            symbol = TransitionLabel(c)
-            start.add_transition(symbol, end)
+            label = TransitionLabel(c)
+            start.add_transition(label, end)
         return NFA(start, end)
 
     def _space(self) -> NFA:
@@ -200,8 +210,8 @@ class RegexParser:
         start = State()
         end   = State()
         for c in self._builtin_charset('s'):
-            symbol = TransitionLabel(c)
-            start.add_transition(symbol, end)
+            label = TransitionLabel(c)
+            start.add_transition(label, end)
         return NFA(start, end)
 
     def _literal(self, char: str) -> NFA:
@@ -214,10 +224,10 @@ class RegexParser:
         Returns:
             NFA: The NFA for the literal character.
         """
-        start  = State()
-        end    = State()
-        symbol = TransitionLabel(char)
-        start.add_transition(symbol, end)
+        start = State()
+        end   = State()
+        label = TransitionLabel(char or None)  # None for empty(epsilon) transitions
+        start.add_transition(label, end)
         return NFA(start, end)
 
     def _concatenate(self, a: NFA, b: NFA) -> NFA:
@@ -430,8 +440,8 @@ class RegexParser:
             chars    = universe - chars
 
         for char in chars:
-            symbol = TransitionLabel(char, is_wildcard=False)
-            start.add_transition(symbol, end)
+            label = TransitionLabel(char, is_wildcard=False)
+            start.add_transition(label, end)
 
         return NFA(start, end)
 
