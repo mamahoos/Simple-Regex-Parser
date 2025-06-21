@@ -1,3 +1,7 @@
+"""
+This module provides functions to compile and match regex patterns using a custom NFA implementation.
+"""
+
 from regex_parser import RegexParser
 from nfa_runner import NFARunner, MatchResult
 
