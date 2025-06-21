@@ -99,6 +99,15 @@ class MatchResult:
         """
         return f"<Match(span={self.spans()}, match={self.__fullmatch!r})>"
     
+    def __bool__(self) -> bool:
+        """
+        Return True if the match is successful (not empty).
+
+        Returns:
+            bool: True if match is successful, False otherwise.
+        """
+        return self.__fullmatch != ""
+    
 
 class NFARunner:
     """
@@ -109,6 +118,8 @@ class NFARunner:
         anchor_start (bool): If True, match must start at the beginning.
         anchor_end (bool): If True, match must end at the end.
     """
+    __slots__ = ['nfa', 'anchor_start', 'anchor_end']
+    
     def __init__(self, nfa: NFA, anchor_start=False, anchor_end=False):
         """
         Initializes the runner with the NFA and anchor flags.
@@ -143,46 +154,6 @@ class NFARunner:
                     stack.append(next_state)
         return closure
 
-    def run(self, s: str) -> bool:
-        """
-        Runs the NFA on the input string.
-
-        Args:
-            s (str): The input string.
-
-        Returns:
-            bool: True if the NFA matches the string, False otherwise.
-        """
-        # Determine starting positions based on anchor
-        start_positions = [0] if self.anchor_start else range(len(s) + 1)
-
-        for start_idx in start_positions:
-            if self._match_from_position(s, start_idx):
-                return True
-        return False
-
-    def _match_from_position(self, s: str, start_idx: int) -> bool:
-        """
-        Attempts to match the NFA from a specific position in the input string.
-
-        Args:
-            s (str): The input string.
-            start_idx (int): The position to start matching from.
-
-        Returns:
-            bool: True if a match is found, False otherwise.
-        """
-        current_states = self._epsilon_closure({self.nfa.start})
-
-        for char in s[start_idx:]:
-            current_states = self._get_next_states(current_states, char)
-            if not current_states:
-                break
-
-        if self.anchor_end:
-            return self.nfa.accept in current_states and (start_idx + len(s[start_idx:]) == len(s))
-        return self.nfa.accept in current_states
-
     def _get_next_states(self, states: Set[State], char: str) -> Set[State]:
         """
         Computes the set of next states for a given input character.
@@ -196,12 +167,76 @@ class NFARunner:
         """
         next_states = set()
         for state in states:
-            # Handle wildcard (dot)
             dot_label = TransitionLabel('.', is_wildcard=True)
             for target in state.transitions.get(dot_label, []):
                 next_states.update(self._epsilon_closure({target}))
-            # Handle literal/escaped character
             literal_label = TransitionLabel(char)
             for target in state.transitions.get(literal_label, []):
                 next_states.update(self._epsilon_closure({target}))
         return next_states
+
+    def _match_from_position(self, s: str, start_idx: int) -> Tuple[bool, int]:
+        """
+        Returns (matched, end_index) if match found, otherwise (False, -1)
+        """
+        current_states = self._epsilon_closure({self.nfa.start})
+        idx = start_idx
+        last_accept_idx = -1
+        for i, char in enumerate(s[start_idx:], start=start_idx):
+            current_states = self._get_next_states(current_states, char)
+            if not current_states:
+                break
+            if self.nfa.accept in current_states:
+                last_accept_idx = i + 1
+            idx = i + 1
+        # Anchor end: only accept if match ends at end of string
+        if self.anchor_end:
+            if self.nfa.accept in current_states and idx == len(s):
+                return True, idx
+            return False, -1
+        # Accept the last position where accept state was reached
+        if last_accept_idx != -1:
+            return True, last_accept_idx
+        return False, -1
+
+    def run(self, s: str) -> bool:
+        """
+        Returns True if any match is found (like search).
+        """
+        return bool(self.search(s))
+
+    def match(self, s: str) -> 'MatchResult | None':
+        """
+        Tries to match the pattern at the start of the string.
+        """
+        matched, end_idx = self._match_from_position(s, 0)
+        if matched:
+            return MatchResult(s[:end_idx], 0, end_idx)
+        return None
+
+    def search(self, s: str) -> 'MatchResult | None':
+        """
+        Scans through string and returns first match anywhere.
+        """
+        start_positions = [0] if self.anchor_start else range(len(s) + 1)
+        for start_idx in start_positions:
+            matched, end_idx = self._match_from_position(s, start_idx)
+            if matched:
+                return MatchResult(s[start_idx:end_idx], start_idx, end_idx)
+        return None
+
+    def findall(self, s: str) -> List[MatchResult]:
+        """
+        Returns all non-overlapping matches in the string.
+        """
+        matches = []
+        i = 0
+        length = len(s)
+        while i <= length:
+            matched, end_idx = self._match_from_position(s, i)
+            if matched and end_idx > i:
+                matches.append(MatchResult(s[i:end_idx], i, end_idx))
+                i = end_idx if end_idx > i else i + 1
+            else:
+                i += 1
+        return matches
