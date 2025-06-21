@@ -7,14 +7,23 @@ import string
 class RegexParser:
     r"""
     Parses a regular expression pattern and constructs the corresponding NFA.
-    Supports basic regex features: ., *, +, ?, |, (), ^, $, \d, \w, \s, and escaped literals.
+
+    Supports:
+        - Literals and escaped characters
+        - Character classes ([abc], [a-z], [^a-z], etc.)
+        - Quantifiers (*, +, ?, {n}, {n,}, {,m}, {n,m})
+        - Alternation (|)
+        - Grouping with parentheses
+        - Anchors (^, $)
+        - Dot (.) for wildcard
+        - Shorthand character classes (\d, \w, \s)
     """
-    
+
     def __init__(self, pattern: str):
         """
-        Initializes the parser with the given pattern.
+        Initialize the RegexParser with a pattern.
 
-        ### Args:
+        Args:
             pattern (str): The regular expression pattern to parse.
         """
         self.pattern = pattern
@@ -24,31 +33,28 @@ class RegexParser:
 
     def parse(self) -> NFA:
         """
-        Parses the pattern and returns the constructed NFA.
+        Parse the pattern and return the constructed NFA.
 
-        ### Returns:
+        Returns:
             NFA: The NFA representing the parsed regular expression.
         """
-        # Step 1
         if self._peek() == '^':
             self.anchor_start = True
             self._consume('^')
-            
-        # Step 2
+
         nfa = self._expression()
-        
-        # Step 3
+
         if self._peek() == '$':
             self.anchor_end = True
             self._consume('$')
-            
+
         return nfa
 
     def _expression(self) -> NFA:
         """
-        Parses an expression, handling alternation (|).
+        Parse an expression, handling alternation (|).
 
-        ### Returns:
+        Returns:
             NFA: The NFA for the parsed expression.
         """
         nfa = self._term()
@@ -60,9 +66,9 @@ class RegexParser:
 
     def _term(self) -> NFA:
         """
-        Parses a term, handling concatenation.
+        Parse a term, handling concatenation.
 
-        ### Returns:
+        Returns:
             NFA: The NFA for the parsed term.
         """
         nfa = self._factor()
@@ -75,9 +81,9 @@ class RegexParser:
 
     def _factor(self) -> NFA:
         """
-        Parses a factor, handling quantifiers (*, +, ?).
+        Parse a factor, handling quantifiers (*, +, ?, {n}, etc).
 
-        ### Returns:
+        Returns:
             NFA: The NFA for the parsed factor.
         """
         nfa = self._base()
@@ -94,20 +100,20 @@ class RegexParser:
                     nfa = self._repeat(nfa)
                 case _:
                     raise ValueError(f"Unexpected operator: {op}")
-                
+
         return nfa
 
     def _base(self) -> NFA:
         """
-        Parses a base element: group, escaped sequence, dot, or literal.
+        Parse a base element: group, escaped sequence, dot, character class, or literal.
 
-        ### Returns:
+        Returns:
             NFA: The NFA for the parsed base element.
         """
         char = self._peek()
-        
+
         match char:
-            
+
             case '(':
                 self._consume('(')
                 nfa = self._expression()
@@ -116,7 +122,7 @@ class RegexParser:
             case '\\':
                 self._consume('\\')
                 escaped = self._consume()
-                
+
                 match escaped:
                     case 'd':
                         return self._digit()
@@ -135,8 +141,17 @@ class RegexParser:
                 return nfa
             case _:
                 return self._literal(self._consume())
-            
+
     def _builtin_charset(self, key: str) -> set[str]:
+        """
+        Return the set of characters for a built-in character class.
+
+        Args:
+            key (str): The character class key ('d', 'w', 's', etc).
+
+        Returns:
+            set[str]: The set of characters for the class.
+        """
         match key:
             case 'd':
                 return set('0123456789')
@@ -149,9 +164,9 @@ class RegexParser:
 
     def _digit(self) -> NFA:
         """
-        Constructs an NFA that matches a single digit (0-9).
+        Construct an NFA that matches a single digit (0-9).
 
-        ### Returns:
+        Returns:
             NFA: The NFA for a digit.
         """
         start = State()
@@ -163,9 +178,9 @@ class RegexParser:
 
     def _word(self) -> NFA:
         """
-        Constructs an NFA that matches a word character (alphanumeric or underscore).
+        Construct an NFA that matches a word character (alphanumeric or underscore).
 
-        ### Returns:
+        Returns:
             NFA: The NFA for a word character.
         """
         start = State()
@@ -177,9 +192,9 @@ class RegexParser:
 
     def _space(self) -> NFA:
         """
-        Constructs an NFA that matches a whitespace character.
+        Construct an NFA that matches a whitespace character.
 
-        ### Returns:
+        Returns:
             NFA: The NFA for a whitespace character.
         """
         start = State()
@@ -191,12 +206,12 @@ class RegexParser:
 
     def _literal(self, char: str) -> NFA:
         """
-        Constructs an NFA that matches a single literal character.
+        Construct an NFA that matches a single literal character.
 
-        ### Args:
+        Args:
             char (str): The character to match.
 
-        ### Returns:
+        Returns:
             NFA: The NFA for the literal character.
         """
         start  = State()
@@ -207,29 +222,28 @@ class RegexParser:
 
     def _concatenate(self, a: NFA, b: NFA) -> NFA:
         """
-        Concatenates two NFAs.
+        Concatenate two NFAs.
 
-        ### Args:
+        Args:
             a (NFA): The first NFA.
             b (NFA): The second NFA.
 
-        ### Returns:
+        Returns:
             NFA: The concatenated NFA.
         """
         epsilon = TransitionLabel(None)
         a.accept.add_transition(epsilon, b.start)
         return NFA(a.start, b.accept)
-    
 
     def _alternate(self, a: NFA, b: NFA) -> NFA:
         """
-        Creates an NFA that matches either of two NFAs (alternation).
+        Create an NFA that matches either of two NFAs (alternation).
 
-        ### Args:
+        Args:
             a (NFA): The first NFA.
             b (NFA): The second NFA.
 
-        ### Returns:
+        Returns:
             NFA: The alternation NFA.
         """
         start   = State()
@@ -243,12 +257,12 @@ class RegexParser:
 
     def _kleene_star(self, a: NFA) -> NFA:
         """
-        Applies the Kleene star (*) to an NFA.
+        Apply the Kleene star (*) to an NFA.
 
-        ### Args:
+        Args:
             a (NFA): The NFA to apply the star to.
 
-        ### Returns:
+        Returns:
             NFA: The resulting NFA.
         """
         start   = State()
@@ -262,12 +276,12 @@ class RegexParser:
 
     def _plus(self, a: NFA) -> NFA:
         """
-        Applies the plus quantifier (+) to an NFA.
+        Apply the plus quantifier (+) to an NFA.
 
-        ### Args:
+        Args:
             a (NFA): The NFA to apply the plus to.
 
-        ### Returns:
+        Returns:
             NFA: The resulting NFA.
         """
         first = self._concatenate(a, self._kleene_star(a))
@@ -275,12 +289,12 @@ class RegexParser:
 
     def _optional(self, a: NFA) -> NFA:
         """
-        Applies the optional quantifier (?) to an NFA.
+        Apply the optional quantifier (?) to an NFA.
 
-        ### Args:
+        Args:
             a (NFA): The NFA to make optional.
 
-        ### Returns:
+        Returns:
             NFA: The resulting NFA.
         """
         start   = State()
@@ -290,79 +304,86 @@ class RegexParser:
         start.add_transition(epsilon, accept)
         a.accept.add_transition(epsilon, accept)
         return NFA(start, accept)
-    
+
     def _repeat(self, a: NFA) -> NFA:
-        """Parses and applies the repeat quantifier {n}, {n,}, {,m}, or {n,m} to an NFA.
+        """
+        Parse and apply the repeat quantifier {n}, {n,}, {,m}, or {n,m} to an NFA.
 
-        ### Args:
-            a (NFA): the base NFA to repeat.
+        Args:
+            a (NFA): The base NFA to repeat.
 
-        ### Returns:
+        Returns:
             NFA: The repeated NFA.
         """
         min_repeats, max_repeats = self._parse_repeat_range()
-        
-        # Mandatory repetitions (min)
+
         repeated = a
         for _ in range(min_repeats - 1):
             second   = self._clone_nfa(repeated)
             repeated = self._concatenate(repeated, second)
 
-        # Optional repetitions (for n <  max)
         if max_repeats is not None:
             for _ in range(max_repeats - min_repeats):
                 second   = self._optional(self._clone_nfa(repeated))
                 repeated = self._concatenate(repeated, second)
         else:
-            # Infinite (like {n,})
             second   = self._kleene_star(self._clone_nfa(a))
             repeated = self._concatenate(repeated, second)
-        
-        return repeated
-                    
-    def _parse_repeat_range(self) -> Tuple[int, Optional[int]]:
-        """Parses the contents inside { and } to determine the repeat range.
 
-        ### Returns:
-            Tuple: (min_repeats, max_repeats) where max_repeats can be None for unbounded
+        return repeated
+
+    def _parse_repeat_range(self) -> Tuple[int, Optional[int]]:
+        """
+        Parse the contents inside { and } to determine the repeat range.
+
+        Returns:
+            Tuple[int, Optional[int]]: (min_repeats, max_repeats) where max_repeats can be None for unbounded.
         """
         num_string = ''
         min_value  = 0
         max_value  = None
         char       = self._peek()
-        
+
         if char == ',':
             self._consume(',')
         else:
             while (peek := self._peek()) and peek.isdigit():
                 num_string += self._consume()
             min_value = int(num_string) if num_string else 0
-            
+
             if self._peek() == ',':
                 self._consume(',')
             else:
                 self._consume('}')
                 return (min_value, max_value)   # Exact repeat {n}
-            
-        # If there's a number after the comma
+
         num_string = ''
         while (peek := self._peek()) and peek.isdigit():
             num_string += self._consume()
-        
+
         if num_string:
             max_value = int(num_string)
-            
+
         self._consume('}')
         return (min_value, max_value)
-    
+
     def _clone_nfa(self, nfa: NFA) -> NFA:
+        """
+        Create a deep copy of the given NFA.
+
+        Args:
+            nfa (NFA): The NFA to clone.
+
+        Returns:
+            NFA: A deep copy of the NFA.
+        """
         return deepcopy(nfa)
 
     def _dot(self) -> NFA:
         """
-        Constructs an NFA that matches any single character.
+        Construct an NFA that matches any single character.
 
-        ### Returns:
+        Returns:
             NFA: The NFA for any character.
         """
         start = State()
@@ -370,13 +391,14 @@ class RegexParser:
         dot   = TransitionLabel('.', is_wildcard=True)
         start.add_transition(dot, end)
         return NFA(start, end)
-    
+
     def _character_class(self) -> NFA:
         """
-        Parses and constructs an NFA that matches a character class.
+        Parse and construct an NFA that matches a character class.
+
         Supports positive and negative character classes, character ranges (a-z), and escaped characters.
 
-        ### Returns:
+        Returns:
             NFA: The NFA for the character class.
         """
         start  = State()
@@ -394,7 +416,6 @@ class RegexParser:
                 escaped = self._consume()
                 chars.update(self._builtin_charset(escaped))
             elif peek and self.pos + 2 < len(self.pattern) and self.pattern[self.pos + 1] == '-':
-                # Handle character range like a-z
                 start_ch = self._consume()
                 self._consume('-')
                 end_ch   = self._consume()
@@ -405,7 +426,7 @@ class RegexParser:
         self._consume(']')
 
         if negate:
-            universe = set(string.printable)  # All printable characters
+            universe = set(string.printable)
             chars    = universe - chars
 
         for char in chars:
@@ -416,24 +437,24 @@ class RegexParser:
 
     def _peek(self) -> Optional[str]:
         """
-        Returns the next character in the pattern without consuming it.
+        Return the next character in the pattern without consuming it.
 
-        ### Returns:
+        Returns:
             Optional[str]: The next character, or None if at the end.
         """
         return self.pattern[self.pos] if self.pos < len(self.pattern) else None
 
     def _consume(self, expected: Optional[str] = None) -> str:
         """
-        Consumes and returns the next character in the pattern.
+        Consume and return the next character in the pattern.
 
-        ### Args:
+        Args:
             expected (Optional[str]): If provided, raises an error if the next character does not match.
 
-        ### Returns:
+        Returns:
             str: The consumed character.
 
-        ### Raises:
+        Raises:
             ValueError: If the end of the pattern is reached or the expected character does not match.
         """
         if self.pos >= len(self.pattern):
