@@ -63,15 +63,6 @@ if match(r"a(b|c)*d", "abcbcd"):
 
 ---
 
-## Features
-
-- Parse standard regular expressions into an abstract syntax tree (AST)
-- Convert regex ASTs into NFAs for pattern matching
-- Simulate NFA execution to test string matches
-- Modular, well-documented codebase for easy understanding and extension
-
----
-
 ## Project Structure
 
 ```
