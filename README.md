@@ -23,25 +23,6 @@ SimpleRegexParser is designed for educational purposes, providing a clear and mo
 
 ---
 
-## Example
-
-```python
-from parser import compile, match, search
-
-runner = compile(r"a(b|c)*d")
-result = runner.match("abcbcd")
-if result:
-        print("Matched:", result.group())
-else:
-        print("No match.")
-
-# Or use the convenience function:
-if match(r"a(b|c)*d", "abcbcd"):
-        print("Full match!")
-```
-
----
-
 ## Supported Regex Features
 
 - Literals and escaped characters
@@ -106,20 +87,6 @@ nfa_regex/
     ```
 
     If a match is found, the matched result will be printed; otherwise, you will see `No match
-
-## Supported Features
-
-- Standard regex syntax: literals, character classes, quantifiers (`*`, `+`, `?`, `{n,m}`), alternation (`|`), grouping (`(...)`), anchors (`^`, `$`), dot (`.`), and shorthand classes (`\d`, `\w`, `\s`).
-- Pure Python implementation using NFA simulation.
-- No external dependencies.
-
----
-
-## Limitations
-
-- No support for lookahead/lookbehind, named groups, or regex flags.
-- Only ASCII character classes are supported.
-- No DFA optimization; performance is suitable for educational and moderate use.
 
 ---
 
