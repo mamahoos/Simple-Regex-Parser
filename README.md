@@ -3,11 +3,6 @@ A minimal Python library for parsing and simulating regular expressions using no
 SimpleRegexParser is designed for educational purposes, providing a clear and modular implementation of regex parsing, AST generation, and NFA simulation.
 
 ---
-## Overview
-
-SimpleRegexParser is a pure Python library that parses standard regular expressions and simulates their matching using nondeterministic finite automata (NFA). It is designed for clarity and educational value, focusing on the core mechanics of regex parsing and NFA execution without external dependencies.
-
----
 
 ## Core Components
 
